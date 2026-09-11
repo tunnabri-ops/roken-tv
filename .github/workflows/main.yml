@@ -1,0 +1,48 @@
+name: Auto Rokon IPTV
+
+on:
+  schedule:
+    # প্রতিদিন প্রতি ৬ ঘণ্টায় একবার চেক করবে
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: sync-rokon-iptv
+  cancel-in-progress: true
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Fetch Rokon IPTV Playlist
+        run: |
+          mkdir -p rokon_iptv
+          
+          # রিপোজিটরি ক্লোন
+          git clone --depth 1 https://github.com/time2shine/Rokon-IPTV.git temp_rokon || true
+          
+          # সকল m3u, m3u8 ও json ফাইল কপি
+          cp temp_rokon/*.m3u ./rokon_iptv/ 2>/dev/null || true
+          cp temp_rokon/*.m3u8 ./rokon_iptv/ 2>/dev/null || true
+          cp temp_rokon/*.json ./rokon_iptv/ 2>/dev/null || true
+          
+          rm -rf temp_rokon
+
+      - name: Commit and Push Changes
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add rokon_iptv/
+          if git diff --staged --quiet; then
+            echo "No updates detected in Rokon IPTV."
+          else
+            git commit -m "Auto update Rokon IPTV: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+            git push origin main
+          fi
